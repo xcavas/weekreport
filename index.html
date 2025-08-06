@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Hours Reservation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <style>
+        /* Custom styles */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 16px;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+        }
+        .edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .edit-modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 500px;
+        }
+        .calendar-day {
+            transition: all 0.2s ease;
+        }
+        .calendar-day:hover {
+            transform: scale(1.05);
+        }
+        .calendar-day.selected {
+            background-color: #3b82f6;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto px-4 py-8 max-w-md">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Header -->
+            <div class="bg-blue-600 text-white p-6">
+                <!-- Tabs Navigation -->
+                <div class="flex mb-4 w-[90%] mx-auto">
+                    <button data-tab="hours" class="tab-btn active bg-blue-700 text-white px-2 py-2 rounded-t-lg w-[25%] flex flex-col items-center">
+                        <i class="fas fa-clock text-lg mb-1"></i>
+                        <span class="text-xs">Hours</span>
+                    </button>
+                    <button data-tab="companies" class="tab-btn bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 rounded-t-lg w-[25%] flex flex-col items-center">
+                        <i class="fas fa-building text-lg mb-1"></i>
+                        <span class="text-xs">Companies</span>
+                    </button>
+                    <button data-tab="employees" class="tab-btn bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 rounded-t-lg w-[25%] flex flex-col items-center">
+                        <i class="fas fa-users text-lg mb-1"></i>
+                        <span class="text-xs">Employees</span>
+                    </button>
+                    <button data-tab="export" class="tab-btn bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 rounded-t-lg w-[25%] flex flex-col items-center">
+                        <i class="fas fa-file-export text-lg mb-1"></i>
+                        <span class="text-xs">Export</span>
+                    </button>
+                </div>
+                <h1 class="text-2xl font-bold">Work Hours Tracker</h1>
+                <p class="text-blue-100">Track your working hours per company</p>
+                <button id='reload' class="bg-green-500 hover:bg-green-600 text-white px-2 py-2 rounded-t-lg w-[25%] flex flex-col items-center">
+                        <i class="fas fa-file-folder text-lg mb-1"></i>
+                        <span class="text-xs">Recargar</span>
+                </button>
+            </div>
+            
+            <!-- Hours Tracker Tab -->
+            <div id="hours" class="tab-content p-6 bg-blue-50">
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="worker-name">
+                        Worker Name
+                    </label>
+                    <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                           id="worker-name">
+                        <option value="">Select an employee</option>
+                    </select>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="selected-date">
+                        Select Date
+                    </label>
+                    <div class="relative">
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                               id="selected-date" type="date">
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="hourss">
+                        Hours Worked
+                    </label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                           id="hourss" type="number" min="0" step="1" placeholder="Enter hours worked">
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="company-name">
+                        Company Worked For
+                    </label>
+                    <select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                           id="company-name">
+                        <option value="">Select company</option>
+                    </select>
+                </div>
+                
+                <button id="submit-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-200">
+                    Save Entry
+                </button>
+            </div>
+            
+            <!-- Weekly Calendar Section -->
+            <div class="p-6 border-t border-blue-200 bg-blue-50">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Weekly Calendar</h2>
+                
+                <div class="flex justify-between mb-2">
+                    <button id="prev-week" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span id="week-range" class="font-medium"></span>
+                    <button id="next-week" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-7 gap-1 mb-2">
+                    <div class="text-center text-xs font-semibold text-gray-500">Sun</div>
+                    <div class="text-center text-xs font-semibold text-gray-500">Mon</div>
+                    <div class="text-center text-xs font-semibold text-gray-500">Tue</div>
+                    <div class="text-center text-xs font-semibold text-gray-500">Wed</div>
+                    <div class="text-center text-xs font-semibold text-gray-500">Thu</div>
+                    <div class="text-center text-xs font-semibold text-gray-500">Fri</div>
+                    <div class="text-center text-xs font-semibold text-gray-500">Sat</div>
+                </div>
+                
+                <div id="calendar-days" class="grid grid-cols-7 gap-1">
+                    <!-- Days will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Companies Tab -->
+            <div id="companies" class="tab-content hidden p-6 border-t border-indigo-200 bg-indigo-50">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Companies</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="new-company-name">
+                        Company Name
+                    </label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                           id="new-company-name" type="text" placeholder="Enter company name">
+                </div>
+                <button id="add-company-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-200">
+                    Add Company
+                </button>
+                
+                <div id="companies-list" class="mt-4 space-y-2">
+                    <!-- Companies will be listed here -->
+                </div>
+            </div>
+
+            <!-- Employees Tab -->
+            <div id="employees" class="tab-content hidden p-6 border-t border-purple-200 bg-purple-50">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Employees</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="new-employee-name">
+                        Employee Name
+                    </label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                           id="new-employee-name" type="text" placeholder="Enter employee name">
+                </div>
+                
+                <button id="add-employee-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-200">
+                    Add Employee
+                </button>
+                
+                <div id="employees-list" class="mt-4 space-y-2">
+                    <!-- Employees will be listed here -->
+                </div>
+            </div>
+
+            <!-- Export Tab -->
+            <div id="export" class="tab-content hidden p-6 border-t border-green-200 bg-green-50">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Export Data</h2>
+                <div class="flex space-x-2">
+                    <button id="export-excel-btn" class="w-1/2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-200">
+                        Export to Excel
+                    </button>
+                    <button id="export-pdf-btn" class="w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-200">
+                        Export to PDF
+                    </button>
+                </div>
+                
+                <div id="data-table" class="mt-4 overflow-auto max-h-60 border rounded-lg hidden">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Worker</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Companies</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Data will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() 
+    {
+
+            // Initialize variables
+            let currentDate = new Date();
+
+            let entries = JSON.parse(localStorage.getItem('entries')) || [];
+            
+            // Add this to save entries after modification
+            function saveEntries() {
+                localStorage.setItem('entries', JSON.stringify(entries));
+            }
+
+            let employees = [
+                { name: 'Miguel Vanegas' },
+                { name: 'Carlos Vanegas' },
+                { name: 'Laura Vanegas' }
+            ];
+
+            let companies = [
+                { name: 'All' },
+                { name: 'Empresa1' },
+                { name: 'Empresa2' },
+                { name: 'Empresa3' }
+            ];
+
+
+            // DOM elements for employees
+            const newEmployeeNameInput = document.getElementById('new-employee-name');
+            const addEmployeeBtn = document.getElementById('add-employee-btn');
+            const employeesList = document.getElementById('employees-list');
+
+            // DOM elements for companies
+            const newCompanyNameInput = document.getElementById('new-company-name');
+            const addCompanyBtn = document.getElementById('add-company-btn');
+            const companiesList = document.getElementById('companies-list');
+
+
+            // DOM elements
+            const workerNameInput = document.getElementById('worker-name');
+            const companyNameInput = document.getElementById('company-name');
+            const dateInput = document.getElementById('selected-date');
+            const hoursInput = document.getElementById('hourss');
+            const submitBtn = document.getElementById('submit-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const prevWeekBtn = document.getElementById('prev-week');
+            const nextWeekBtn = document.getElementById('next-week');
+            const weekRangeSpan = document.getElementById('week-range');
+            const calendarDays = document.getElementById('calendar-days');
+            const dataTable = document.getElementById('data-table');
+            const tableBody = document.getElementById('table-body');
+            
+            // Set today's date as default
+            const today = new Date();
+            dateInput.valueAsDate = today;
+
+            // Event listeners
+            submitBtn.addEventListener('click', saveEntry);
+            document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
+            document.getElementById('export-pdf-btn').addEventListener('click', exportToPDF);
+            document.getElementById('add-company-btn').addEventListener('click', addCompany);
+            prevWeekBtn.addEventListener('click', showPreviousWeek);
+            nextWeekBtn.addEventListener('click', showNextWeek);
+            addEmployeeBtn.addEventListener('click', addEmployee);
+            addCompanyBtn.addEventListener('click', addCompany);
+            document.getElementById('reload').addEventListener('click', resetAllData);
+
+            // Tab functionality
+            const tabs = document.querySelectorAll('.tab-btn');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs
+                    tabs.forEach(t => {
+                        t.classList.remove('active', 'bg-blue-700');
+                        t.classList.add('bg-blue-500');
+                    });
+                    
+                    // Add active class to clicked tab
+                    tab.classList.add('active', 'bg-blue-700');
+                    tab.classList.remove('bg-blue-500');
+                    
+                    // Hide all tab contents
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    
+                    // Show selected tab content
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.remove('hidden');
+                });
+            });
+
+
+
+            function updateEmployeesList() {
+                const employeesList = document.getElementById('employees-list');
+                employeesList.innerHTML = '';
+                
+                employees.forEach((employee, index) => {
+                    const employeeElement = document.createElement('div');
+                    employeeElement.className = 'flex justify-between items-center bg-gray-50 p-2 rounded';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = employee.name;
+
+                    const buttonsDiv = document.createElement('div');
+                    buttonsDiv.className = 'flex space-x-2';
+
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'text-blue-500 hover:text-blue-700';
+                    editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                    editBtn.addEventListener('click', () => editEmployee(index));
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'text-red-500 hover:text-red-700';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    deleteBtn.addEventListener('click', () => deleteEmployee(index));
+                    
+                    buttonsDiv.appendChild(editBtn);
+                    buttonsDiv.appendChild(deleteBtn);
+
+                    employeeElement.appendChild(nameSpan);
+                    employeeElement.appendChild(buttonsDiv);
+                    
+                    employeesList.appendChild(employeeElement);
+                });
+            }
+
+
+            // Company management functions
+            function updateCompaniesList() {
+                const companiesList = document.getElementById('companies-list');
+                companiesList.innerHTML = '';
+                
+                companies.forEach((company, index) => {
+                    const companyElement = document.createElement('div');
+                    companyElement.className = 'flex justify-between items-center bg-gray-50 p-2 rounded';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = company.name;
+                    
+                    const buttonsDiv = document.createElement('div');
+                    buttonsDiv.className = 'flex space-x-2';
+                    
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'text-blue-500 hover:text-blue-700';
+                    editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                    editBtn.addEventListener('click', () => editCompany(index));
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'text-red-500 hover:text-red-700';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    deleteBtn.addEventListener('click', () => deleteCompany(index));
+                    
+                    buttonsDiv.appendChild(editBtn);
+                    buttonsDiv.appendChild(deleteBtn);
+                    
+                    companyElement.appendChild(nameSpan);
+                    companyElement.appendChild(buttonsDiv);
+                    
+                    companiesList.appendChild(companyElement);
+                });
+            }
+
+
+
+            function updateWorkerNameDropdown() {
+                const select = document.getElementById('worker-name');
+                
+                // Keep the first option (Select an employee)
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+                
+                employees.forEach(employee => {
+                    const option = document.createElement('option');
+                    option.value = employee.name;
+                    option.textContent = employee.name;
+                    select.appendChild(option);
+                });
+            }           
+            
+            function updateCompanyNameDropdown() {
+                const select = document.getElementById('company-name');
+                
+                // Keep the first option (Select an Company)
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+                
+                companies.forEach(company => {
+                    const option = document.createElement('option');
+                    option.value = company.name;
+                    option.textContent = company.name;
+                    select.appendChild(option);
+                });
+            }
+
+
+
+            function addEmployee() {
+                const name = newEmployeeNameInput.value.trim();
+                
+                if (!name) {
+                    alert('Please enter employee name');
+                    return;
+                }
+                
+                if (employees.some(emp => emp.name.toLowerCase() === name.toLowerCase())) {
+                    alert('Employee already exists');
+                    updateEmployeesList();
+                    updateWorkerNameDropdown();
+                    return;
+                }
+                
+                employees.push({name});
+                localStorage.setItem('employees', JSON.stringify(employees));
+                
+                updateEmployeesList();
+                updateWorkerNameDropdown();
+                
+                newEmployeeNameInput.value = '';
+                alert('Employee added successfully!');
+            }
+            
+
+            function editEmployee(index) {
+                const newName = prompt('Enter new Employee name:', employees[index].name);
+                if (newName && newName.trim() && newName !== employees[index].name) {
+                    employees[index].name = newName.trim();
+                    localStorage.setItem('employees', JSON.stringify(employees));
+                    updateEmployeesList();
+                    updateWorkerNameDropdown();
+                }
+            }
+
+            function deleteEmployee(index) {
+                if (confirm('Are you sure you want to delete this Employee?')) {
+                    employees.splice(index, 1);
+                    localStorage.setItem('employees', JSON.stringify(employees));
+                    updateEmployeesList();
+                    updateWorkerNameDropdown();
+                }
+            }
+
+
+            function addCompany() {
+                const name = newCompanyNameInput.value.trim();
+                
+                if (!name) {
+                    alert('Please enter company name');
+                    return;
+                }
+                
+                if (companies.some(emp => emp.name.toLowerCase() === name.toLowerCase())) {
+                    alert('Company already exists');
+                    updateCompaniesList();
+                    updateCompanyNameDropdown();
+                    return;
+                }
+                
+                companies.push({name});
+                localStorage.setItem('companies', JSON.stringify(companies));
+                
+                updateCompaniesList();
+                updateCompanyNameDropdown();
+                
+                newCompanyNameInput.value = '';
+                alert('Company added successfully!');
+            }
+
+
+            function editCompany(index) {
+                const newName = prompt('Enter new company name:', companies[index].name);
+                if (newName && newName.trim() && newName !== companies[index].name) {
+                    companies[index].name = newName.trim();
+                    localStorage.setItem('companies', JSON.stringify(companies));
+                    updateCompaniesList();
+                    updateCompanyNameDropdown();
+                }
+            }
+
+            function resetAllData() {
+                if (confirm('Are you sure you want to delete ALL data? This cannot be undone!')) {
+                    // Clear localStorage
+                    localStorage.clear();
+                    
+                    // Reset entries array
+                    entries = [];
+                    
+                    // Reset form inputs
+                    workerNameInput.value = '';
+                    dateInput.valueAsDate = new Date();
+                    hoursInput.value = '';
+                    companyNameInput.value = '';
+                    newEmployeeNameInput.value = '';
+                    newCompanyNameInput.value = '';
+                    
+                    // Reset default employees and companies
+                    employees = [
+                        { name: 'Miguel Vanegas' },
+                        { name: 'Carlos Vanegas' },
+                        { name: 'Laura Vanegas' }
+                    ];
+                    
+                    companies = [
+                        { name: 'All' },
+                        { name: 'Empresa1' },
+                        { name: 'Empresa2' },
+                        { name: 'Empresa3' }
+                    ];
+                    
+                    // Save defaults
+                    localStorage.setItem('employees', JSON.stringify(employees));
+                    localStorage.setItem('companies', JSON.stringify(companies));
+                    
+                    // Update UI
+                    updateEmployeesList();
+                    updateCompaniesList();
+                    updateWorkerNameDropdown();
+                    updateCompanyNameDropdown();
+                    updateDataTable();
+                    renderCalendar();
+                    
+                    alert('All data has been reset to defaults!');
+                }
+            }
+
+            function deleteCompany(index) {
+                if (confirm('Are you sure you want to delete this company?')) {
+                    companies.splice(index, 1);
+                    localStorage.setItem('companies', JSON.stringify(companies));
+                    updateCompaniesList();
+                    updateCompanyNameDropdown();
+                }
+            }
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+            // Load data from localStorage if available, otherwise use defaults
+            if (localStorage.getItem('employees')) {
+                employees = JSON.parse(localStorage.getItem('employees'));                
+            } else {
+                localStorage.setItem('employees', JSON.stringify(employees));
+            }
+            if (localStorage.getItem('companies')) {
+                companies = JSON.parse(localStorage.getItem('companies'));
+            } else {
+                localStorage.setItem('companies', JSON.stringify(companies));
+            }
+            
+            // Initialize data
+            updateEmployeesList();
+            updateCompaniesList();
+
+            updateWorkerNameDropdown();
+            updateCompanyNameDropdown();
+
+            // Initialize calendar
+            updateWeekDisplay();
+            renderCalendar();
+                    
+
+
+            
+
+            
+            // Functions
+            function saveEntry() {
+                const workerName = workerNameInput.value.trim();
+                const date = dateInput.value;
+                const hours = parseInt(hoursInput.value) || 0;
+                if (hours <= 0) {
+                    alert('Please enter valid hours worked');
+                    return;
+                }
+                const companyName = companyNameInput.value.trim();
+                
+                // Validate inputs
+                if (!workerName) {
+                    alert('Please select an Employee');
+                    return;
+                }
+                
+                if (!date) {
+                    alert('Please select a date');
+                    return;
+                }
+
+                if (!companyName) {
+                    alert('Please select an Company');
+                    return;
+                }
+                            
+                // Create entry
+                const entry = {
+                                workerName,
+                                date,
+                                hours,
+                                companyName
+                              };
+                
+                // Add to entries array
+                entries.push(entry);
+                saveEntries();
+                
+                // Update UI
+                updateDataTable();
+                renderCalendar();
+                
+                // Reset form (except name)
+                workerNameInput.value = '';
+                dateInput.valueAsDate = today;
+                hoursInput.value = '';
+                companyNameInput.value = '';
+                
+                alert('Entry added sucessfully');
+
+            }
+            
+            function updateDataTable() {
+                tableBody.innerHTML = '';
+                
+                entries.forEach(entry => {
+                    const row = document.createElement('tr');
+                    
+                    const nameCell = document.createElement('td');
+                    nameCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+                    nameCell.textContent = entry.workerName;
+                    
+                    const dateCell = document.createElement('td');
+                    dateCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+                    dateCell.textContent = formatDate(entry.date);
+                    
+                    const hoursCell = document.createElement('td');
+                    hoursCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+                    hoursCell.textContent = entry.hours;
+                    
+                    const companyCell = document.createElement('td');
+                    companyCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-900';
+                    companyCell.textContent = entry.companyName;
+                    
+                    row.appendChild(nameCell);
+                    row.appendChild(dateCell);
+                    row.appendChild(hoursCell);
+                    row.appendChild(companyCell);
+                    
+                    tableBody.appendChild(row);
+                });
+                
+                dataTable.classList.remove('hidden');
+            }
+            
+
+             function exportToExcel() {
+                if (entries.length === 0) {
+                    alert('No data to export');
+                    return;
+                }
+                
+                // Group by worker and week
+                const weeklyData = {};
+                const currentWeek = getStartOfWeek(currentDate);
+                
+                entries.forEach(entry => {
+                    const entryDate = new Date(entry.date);
+                    const entryWeek = getStartOfWeek(entryDate);
+                    
+                    if (isSameWeek(entryWeek, currentWeek)) {
+                        const dayOfWeek = entryDate.getDay(); // 0=Sun, 6=Sat
+                        const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
+                        
+                        if (!weeklyData[entry.workerName]) {
+                            weeklyData[entry.workerName] = {
+                                name: entry.workerName,
+                                days: {
+                                    Sunday: 0,
+                                    Monday: 0,
+                                    Tuesday: 0,
+                                    Wednesday: 0,
+                                    Thursday: 0,
+                                    Friday: 0,
+                                    Saturday: 0
+                                },
+                                companies: entry.companyName,
+                                total: 0,
+                                signature: ''
+                            };
+                        }
+                        
+                        weeklyData[entry.workerName].days[dayName] += entry.hours;
+                        weeklyData[entry.workerName].total += entry.hours;
+                    }
+                });
+                
+                // Create CSV content
+                let csvContent = "data:text/csv;charset=utf-8,";
+                
+                // Add headers
+                csvContent += "Name,Companies,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday,Total,Signature\n";
+                
+                // Add data rows
+                Object.values(weeklyData).forEach(data => {
+                    csvContent += `${data.name},"${data.companies}",${data.days.Monday},${data.days.Tuesday},${data.days.Wednesday},${data.days.Thursday},${data.days.Friday},${data.days.Saturday},${data.days.Sunday},${data.total},"${data.signature}"\n`;
+                });
+                
+                // Create download link
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `work_hours_${formatDate(currentWeek)}.csv`);
+                document.body.appendChild(link);
+                
+                // Download file
+                link.click();
+                document.body.removeChild(link);
+            }
+            
+            function exportToPDF() {
+                alert('PDF export functionality would be implemented here');
+                // In a real implementation, you would use a library like jsPDF
+                // to generate a PDF with the same weekly data format
+            }
+            
+            function isSameWeek(date1, date2) {
+                const week1 = getStartOfWeek(date1);
+                const week2 = getStartOfWeek(date2);
+                return isSameDay(week1, week2);
+            }
+            
+            function updateWeekDisplay() {
+                const startOfWeek = getStartOfWeek(currentDate);
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                
+                weekRangeSpan.textContent = `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
+            }
+            
+
+            function renderCalendar() {
+                calendarDays.innerHTML = '';
+                
+                const startOfWeek = getStartOfWeek(currentDate);
+                
+                for (let i = 0; i < 7; i++) {
+                    const day = new Date(startOfWeek);
+                    day.setDate(startOfWeek.getDate() + i);
+                    
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'calendar-day p-2 text-center text-sm rounded-lg cursor-pointer border border-gray-200';
+                    dayElement.dataset.date = day.toISOString().split('T')[0];
+                    
+                    // Highlight today
+                    if (isSameDay(day, today)) {
+                        dayElement.classList.add('bg-blue-100', 'border-blue-300');
+                    }
+                    
+                    // Highlight days with entries
+                    const dayEntries = entries.filter(entry => {
+                        const entryDate = new Date(entry.date);
+                        return isSameDay(day, entryDate);
+                    });
+                    
+                    if (dayEntries.length > 0) {
+                        dayElement.classList.add('bg-green-50', 'border-green-200');
+                    }
+                    
+                    const totalHours = dayEntries.reduce((sum, entry) => sum + entry.hours, 0);
+                    dayElement.innerHTML = `
+                        <div class="font-medium">${day.getDate()}</div>
+                        <div class="text-xs text-gray-500">${totalHours} hours</div>
+                    `;
+                    
+                    dayElement.addEventListener('click', () => {
+                        const dayEntries = getEntriesForDate(day);
+                        if (dayEntries.length > 0) {
+                            showEditModal(day, dayEntries);
+                        } else {
+                            dateInput.valueAsDate = day;
+                        }
+                    });
+                    
+                    calendarDays.appendChild(dayElement);
+                }
+            }
+            
+            function showPreviousWeek() {
+                currentDate.setDate(currentDate.getDate() - 7);
+                updateWeekDisplay();
+                renderCalendar();
+            }
+            
+            function showNextWeek() {
+                currentDate.setDate(currentDate.getDate() + 7);
+                updateWeekDisplay();
+                renderCalendar();
+            }
+            
+            // Helper functions
+            function getStartOfWeek(date) {
+                const d = new Date(date);
+                const day = d.getDay();
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+                return new Date(d.setDate(diff));
+            }
+            
+            function isSameDay(date1, date2) {
+                return date1.getFullYear() === date2.getFullYear() &&
+                       date1.getMonth() === date2.getMonth() &&
+                       date1.getDate() === date2.getDate();
+            }
+            
+            function formatDate(date) {
+                if (typeof date === 'string') {
+                    date = new Date(date);
+                }
+                
+                const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                return date.toLocaleDateString('en-US', options);
+            }
+
+
+            function getEntriesForDate(date) {
+                return entries.filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return isSameDay(date, entryDate);
+                });
+            }
+
+            function showEditModal(date, dayEntries) {
+                const modal = document.getElementById('edit-modal');
+                const editDate = document.getElementById('edit-date');
+                const editEntriesList = document.getElementById('edit-entries-list');
+                
+                editDate.textContent = formatDate(date);
+                editEntriesList.innerHTML = '';
+                
+                dayEntries.forEach((entry, index) => {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.className = 'border p-2 rounded bg-gray-50';
+                    
+                    entryDiv.innerHTML = `
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-medium">${entry.workerName}</span>
+                            <button class="text-red-500 delete-entry" data-index="${entries.indexOf(entry)}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="text-sm">
+                            <div>Hours: ${entry.hours}</div>
+                            <div>Companies: ${entry.companyName}</div>
+                        </div>
+                    `;
+                    
+                    editEntriesList.appendChild(entryDiv);
+                });
+                
+                modal.style.display = 'flex';
+                
+                // Close modal handler
+                document.getElementById('close-edit-modal').addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
+                
+                // Delete entry handlers
+                document.querySelectorAll('.delete-entry').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const entryIndex = parseInt(this.dataset.index);
+                        if (confirm('Delete this entry?')) {
+                            entries.splice(entryIndex, 1);
+                            renderCalendar();
+                            updateDataTable();
+                            showEditModal(date, getEntriesForDate(date));
+                        }
+                    });
+                });
+            }
+    });
+
+    </script>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="flex items-center">
+            <i class="fas fa-check-circle mr-2"></i>
+            <span>Entry added successfully!</span>
+        </div>
+    </div>
+
+    <!-- Edit Entry Modal -->
+    <div id="edit-modal" class="edit-modal">
+        <div class="edit-modal-content">
+            <h3 class="text-lg font-bold mb-4">Edit Entries for <span id="edit-date"></span></h3>
+            <div id="edit-entries-list" class="mb-4 space-y-2"></div>
+            <div class="flex justify-end space-x-2">
+                <button id="close-edit-modal" class="px-4 py-2 bg-gray-300 rounded">Close</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
